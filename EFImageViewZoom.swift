@@ -10,11 +10,16 @@ import UIKit
 
 public protocol EFImageViewZoomDelegate : class {
     func viewForZooming(zoomView: EFImageViewZoom) -> UIView?
+    func singleTapHandler(sender: UITapGestureRecognizer) -> Bool
 }
 
 public extension EFImageViewZoomDelegate {
     func viewForZooming(zoomView: EFImageViewZoom) -> UIView? {
         return zoomView.imageView
+    }
+    
+    func singleTapHandler(sender: UITapGestureRecognizer) -> Bool {
+        return false
     }
 }
 
@@ -32,6 +37,7 @@ public class EFImageViewZoom: UIScrollView {
     public weak var _delegate: EFImageViewZoomDelegate?
     fileprivate (set) public var imageView: UIImageView!
     fileprivate var cacheImage: UIImage!
+    fileprivate var blockTwoTaps: Bool = false
     
     @IBInspectable public var image: UIImage! {
         didSet{
@@ -149,16 +155,37 @@ public class EFImageViewZoom: UIScrollView {
         let tap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped))
         tap.numberOfTapsRequired = 2
         self.addGestureRecognizer(tap)
+    
+        imageView.isUserInteractionEnabled = true
+        let guesture = UITapGestureRecognizer(target: self, action: #selector(singleTap))
+        imageView.addGestureRecognizer(guesture)
+        
+        guesture.delegate = self
     }
     
     @objc func doubleTapped() {
-        self.setZoomScale(1.0, animated: true)
+        guard blockTwoTaps else {
+//            print("tapped me double")
+            self.setZoomScale(1.0, animated: true)
+            return
+        }
+    }
+    
+    @objc func singleTap(sender: UITapGestureRecognizer) {
+//        print("tapped me")
+        blockTwoTaps = self._delegate?.singleTapHandler(sender: sender) ?? false
     }
 }
 
 extension EFImageViewZoom: UIScrollViewDelegate {
     public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return self._delegate?.viewForZooming(zoomView: scrollView as! EFImageViewZoom)
+    }
+}
+
+extension EFImageViewZoom: UIGestureRecognizerDelegate{
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 }
 
